@@ -59,12 +59,53 @@ To stop it, press `Ctrl + C` in the terminal.
 
 ---
 
+## Optional: personalized AI picks (Claude)
+
+The app works fully **without** any AI — the curated roadmap is the reliable
+backbone. If you provide an **Anthropic API key**, it adds a small *"✨ Personalized
+picks for you"* section with a few extra free, no-code resources tailored to the
+person's answers, plus a personalized intro.
+
+- **Model:** Claude Haiku 4.5 (cheap and fast) — roughly **less than 1¢ per visit**.
+- **Caching:** results are cached per answer-pattern, so repeated answer sets cost
+  nothing. With the 6 fixed-option questions, real-world cost is typically a few
+  dollars a month even with steady traffic.
+- **Graceful fallback:** no key, or any API error → the app silently shows the
+  curated roadmap only.
+
+### Add your key (never commit it)
+
+**Local — option A (environment variable):**
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."   # PowerShell (this terminal session)
+python -m streamlit run app.py
+```
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."   # macOS / Linux
+python -m streamlit run app.py
+```
+
+**Local — option B (Streamlit secrets file):** create `.streamlit/secrets.toml`:
+```toml
+ANTHROPIC_API_KEY = "sk-ant-..."
+```
+> `.streamlit/secrets.toml` is already in `.gitignore`, so it won't be committed.
+
+**On Streamlit Community Cloud:** open your app → **Settings → Secrets** and paste:
+```toml
+ANTHROPIC_API_KEY = "sk-ant-..."
+```
+Never paste your key into the code or commit it to GitHub.
+
+---
+
 ## Files
 
 | File              | What it is                                                        |
 |-------------------|-------------------------------------------------------------------|
 | `app.py`          | The Streamlit app — screens, questionnaire flow, and rendering.   |
 | `roadmap_data.py` | The questions, the curated free-resource library, and the logic that assembles a roadmap from your answers. |
+| `ai_suggestions.py` | Optional Claude (Haiku 4.5) layer for personalized fresh picks; cached per answer-pattern. |
 | `requirements.txt`| Python dependencies.                                              |
 
 ### Want to add or change resources?
