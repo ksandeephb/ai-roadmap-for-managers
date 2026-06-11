@@ -13,11 +13,12 @@ Built with [Streamlit](https://streamlit.io/) (Python).
 
 ## What it does
 
-1. **Asks 6 questions** — your role, why you want to learn AI, your current level,
-   weekly time, how you like to learn, and which topics interest you.
+1. **Asks your name + 6 questions** — your role, why you want to learn AI, your
+   current level, weekly time, how you like to learn, and which topics interest you.
+   The results are personalized to your name ("Ravi, here's your roadmap…").
 2. **Builds a 4-phase roadmap** — Foundations → How it works → Hands-on → Apply it
    to your work — choosing resources that match your answers.
-3. **Lets you download it** as a Markdown file to keep.
+3. **Lets you download it as a PDF** (named after you) to keep or share.
 
 No login, no tracking, no cost.
 
@@ -106,6 +107,7 @@ Never paste your key into the code or commit it to GitHub.
 | `app.py`          | The Streamlit app — screens, questionnaire flow, and rendering.   |
 | `roadmap_data.py` | The questions, the curated free-resource library, and the logic that assembles a roadmap from your answers. |
 | `ai_suggestions.py` | Optional Claude (Haiku 4.5) layer for personalized fresh picks; cached per answer-pattern. |
+| `pdf_export.py`   | Builds the downloadable PDF (via `fpdf2`), including the author credit footer. |
 | `requirements.txt`| Python dependencies.                                              |
 
 ### Want to add or change resources?

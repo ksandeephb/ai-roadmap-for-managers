@@ -18,6 +18,7 @@ from roadmap_data import (
     build_roadmap,
 )
 from ai_suggestions import ai_available, fetch_ai_suggestions
+from pdf_export import build_pdf, AUTHOR_NAME, AUTHOR_EMAIL, AUTHOR_LINKEDIN
 
 # --------------------------------------------------------------------------- #
 # Page config + styling
@@ -73,6 +74,8 @@ if "step" not in st.session_state:
     st.session_state.step = 0
 if "answers" not in st.session_state:
     st.session_state.answers = {}
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
 
 
 def go(stage):
@@ -83,6 +86,7 @@ def reset():
     st.session_state.stage = "intro"
     st.session_state.step = 0
     st.session_state.answers = {}
+    st.session_state.user_name = ""
 
 
 # --------------------------------------------------------------------------- #
@@ -105,6 +109,14 @@ def render_intro():
     c3.markdown("🆓 **Only free resources**")
 
     st.write("")
+    name = st.text_input(
+        "First, what should we call you?",
+        value=st.session_state.user_name,
+        placeholder="e.g. Ravi (optional)",
+        max_chars=40,
+    )
+    st.session_state.user_name = name.strip()
+
     if st.button("Build my roadmap  →", type="primary", use_container_width=True):
         st.session_state.step = 0
         go("quiz")
@@ -225,22 +237,25 @@ def answer_signature(a: dict) -> tuple:
     return tuple((q["id"], norm(a.get(q["id"]))) for q in QUESTIONS)
 
 
-def render_ai_section(a: dict, plan: dict):
-    """Render personalized AI suggestions, if an API key is configured."""
+def get_ai_result(a: dict, plan: dict):
+    """Fetch (cached) AI suggestions, or None if unavailable. Reused for page + PDF."""
     if not ai_available():
-        return  # graceful: curated roadmap only, no error, no UI noise
-
+        return None
     existing_titles = tuple(r["title"] for p in plan["phases"] for r in p["resources"])
     with st.spinner("✨ Personalizing a few extra picks for you…"):
-        result = fetch_ai_suggestions(answer_signature(a), profile_text(a), existing_titles)
+        return fetch_ai_suggestions(answer_signature(a), profile_text(a), existing_titles)
 
+
+def render_ai_section(name: str, result):
+    """Render personalized AI suggestions from a pre-fetched result."""
     if not result:
         return
     if "error" in result:
         st.caption(f"ℹ️ Personalized picks unavailable right now — {result['error']}")
         return
 
-    st.markdown("### ✨ Personalized picks for you")
+    heading = f"### ✨ {name}, here are some picks for you" if name else "### ✨ Personalized picks for you"
+    st.markdown(heading)
     if result.get("intro"):
         st.markdown(f'<p class="sub">{result["intro"]}</p>', unsafe_allow_html=True)
 
@@ -263,10 +278,12 @@ def render_ai_section(a: dict, plan: dict):
 
 def render_result():
     a = st.session_state.answers
+    name = st.session_state.get("user_name", "").strip()
     plan = build_roadmap(a)
 
     st.markdown('<span class="eyebrow">Your personalized roadmap</span>', unsafe_allow_html=True)
-    st.title("Your no-code path to understanding AI")
+    title = f"{name}, here's your personalized AI roadmap" if name else "Your no-code path to understanding AI"
+    st.title(title)
     st.markdown(
         f'<p class="sub">As a <b>{ROLE_MAP.get(a.get("role"), "manager")}</b> who wants to '
         f'<b>{GOAL_MAP.get(a.get("goal"), "understand AI")}</b>, here\'s a path that meets you where you are — '
@@ -274,6 +291,9 @@ def render_result():
         f"<b>free</b> and requires <b>no coding</b>.</p>",
         unsafe_allow_html=True,
     )
+
+    # Fetch AI suggestions once — reused for the page section and the PDF
+    ai_result = get_ai_result(a, plan)
 
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Phases", len(plan["phases"]))
@@ -305,7 +325,7 @@ def render_result():
         st.write("")
 
     # ---- Optional AI layer: personalized fresh picks ----
-    render_ai_section(a, plan)
+    render_ai_section(name, ai_result)
 
     st.markdown(
         '<div class="tips">'
@@ -329,37 +349,21 @@ def render_result():
             reset()
             st.rerun()
     with col2:
+        profile_lines = [
+            f"Role: {ROLE_MAP.get(a.get('role'), 'manager')}",
+            f"Goal: {GOAL_MAP.get(a.get('goal'), 'understand AI')}",
+            f"Starting point: {LEVEL_MAP.get(a.get('level'), 'at your level')}",
+            f"Pace: {TIME_LABEL.get(a.get('time'), '-')}",
+        ]
+        pdf_bytes = build_pdf(name, profile_lines, plan, ai_result)
+        safe_name = "".join(c for c in name if c.isalnum()) or "my"
         st.download_button(
-            "⬇️ Download my roadmap (.md)",
-            data=roadmap_markdown(a, plan),
-            file_name="my_ai_roadmap.md",
-            mime="text/markdown",
+            "⬇️ Download my roadmap (PDF)",
+            data=pdf_bytes,
+            file_name=f"{safe_name}_ai_roadmap.pdf",
+            mime="application/pdf",
             use_container_width=True,
         )
-
-
-def roadmap_markdown(a: dict, plan: dict) -> str:
-    """Render the roadmap as a portable Markdown file the user can keep."""
-    lines = [
-        "# My personalized AI roadmap (no-code, free resources)",
-        "",
-        f"- **Role:** {ROLE_MAP.get(a.get('role'), 'manager')}",
-        f"- **Goal:** {GOAL_MAP.get(a.get('goal'), 'understand AI')}",
-        f"- **Starting point:** {LEVEL_MAP.get(a.get('level'), 'at your level')}",
-        f"- **Pace:** {TIME_LABEL.get(a.get('time'), '—')}  ·  **Est. to finish:** ~{plan['weeks']} weeks",
-        "",
-    ]
-    for i, phase in enumerate(plan["phases"], start=1):
-        lines.append(f"## Phase {i}: {phase['title']}")
-        lines.append(f"_Goal: {phase['goal']}_")
-        lines.append("")
-        for r in phase["resources"]:
-            tags = ", ".join(["Free", TYPE_LABEL.get(r["type"], "Resource")] + r["tags"])
-            lines.append(f"- **[{r['title']}]({r['url']})**  \n  {r['desc']}  \n  _{tags}_")
-        lines.append("")
-    lines.append("---")
-    lines.append("Tip: schedule a recurring learning slot, learn out loud, and tie each topic to a real initiative at work.")
-    return "\n".join(lines)
 
 
 # --------------------------------------------------------------------------- #
@@ -372,3 +376,16 @@ elif stage == "quiz":
     render_quiz()
 else:
     render_result()
+
+# --------------------------------------------------------------------------- #
+# Footer — author credit & contact (shown on every screen)
+# --------------------------------------------------------------------------- #
+st.markdown(
+    f'<hr style="border-color:#2a3556; margin-top:38px;">'
+    f'<div style="text-align:center; color:#9aa6c7; font-size:0.85rem; padding-bottom:10px;">'
+    f"Created by <b>{AUTHOR_NAME}</b>&nbsp; ·&nbsp; "
+    f'<a href="mailto:{AUTHOR_EMAIL}" style="color:#8a9bff; text-decoration:none;">{AUTHOR_EMAIL}</a>&nbsp; ·&nbsp; '
+    f'<a href="{AUTHOR_LINKEDIN}" target="_blank" style="color:#8a9bff; text-decoration:none;">LinkedIn</a>'
+    f"</div>",
+    unsafe_allow_html=True,
+)
