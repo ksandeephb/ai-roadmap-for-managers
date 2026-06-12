@@ -73,6 +73,7 @@ SYSTEM_PROMPT = (
     "Never invent URLs or cite niche pages you are unsure about.\n\n"
     "Your suggestions must COMPLEMENT the learner's existing roadmap — do not "
     "repeat resources they already have. Write in clear, jargon-free language."
+    "Do not provide the link if they arw nor available , also provide video content only"
 )
 
 
