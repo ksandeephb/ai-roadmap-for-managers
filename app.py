@@ -258,9 +258,12 @@ TIME_LABEL = {"high": "6+ hrs/week", "mid": "3–5 hrs/week", "low": "1–2 hrs/
 
 STYLE_LABEL = {"video": "videos", "read": "reading", "course": "structured courses", "hands": "trying tools"}
 INTEREST_LABEL = {
-    "genai": "generative AI & ChatGPT", "prompt": "prompting & everyday AI tools",
-    "concepts": "how AI/ML works", "strategy": "AI strategy & use-cases",
-    "ethics": "risk, ethics & governance", "managing": "managing AI projects",
+    "history":   "AI history & background",
+    "concepts":  "how AI/ML works (plain English)",
+    "usecases":  "AI use cases & business value",
+    "lifecycle": "AI project lifecycle & team roles",
+    "managing":  "managing & delivering AI projects",
+    "strategy":  "AI strategy, ethics & leadership",
 }
 
 
