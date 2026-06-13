@@ -73,6 +73,23 @@ st.markdown(
         color: #eaf0ff !important;
       }
 
+      /* Back button — visible but secondary, matches the card/border palette */
+      div.stButton > button:not([kind="primary"]) {
+        background: #1b2647 !important;
+        color: #8a9bff !important;
+        border: 1px solid #3a4a7a !important;
+        font-weight: 600 !important;
+      }
+      div.stButton > button:not([kind="primary"]):hover {
+        background: #232e5a !important;
+        color: #eaf0ff !important;
+        border-color: #8a9bff !important;
+      }
+      div.stButton > button:not([kind="primary"]) p,
+      div.stButton > button:not([kind="primary"]) span {
+        color: #8a9bff !important;
+      }
+
       /* FIX 3 — Download button: ensure label text is visible before hover */
       div.stDownloadButton > button {
         color: #eaf0ff !important;
