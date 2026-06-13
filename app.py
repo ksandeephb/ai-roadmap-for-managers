@@ -36,6 +36,7 @@ st.markdown(
       .stApp { background: radial-gradient(1100px 500px at 80% -10%, #1b2452 0%, transparent 60%), #0b1020; }
       .block-container { padding-top: 2.2rem; max-width: 820px; }
       h1, h2, h3, h4, p, li, label, span { color: #eaf0ff; }
+
       .eyebrow {
         display:inline-block; font-size:0.78rem; font-weight:600; letter-spacing:0.05em;
         text-transform:uppercase; color:#36d6c3; background:rgba(54,214,195,0.10);
@@ -61,19 +62,23 @@ st.markdown(
       .tips { background:rgba(108,123,255,0.07); border:1px dashed #2a3556; border-radius:14px; padding:18px 22px; }
       div[data-testid="stMetricValue"] { color:#eaf0ff; }
 
-      /* FIX 2 — Button labels: force #eaf0ff text so they're visible on the dark theme */
-      div.stButton > button,
-      div.stDownloadButton > button {
-        color: #eaf0ff !important;
+      /* ── Primary buttons (Next, Build my roadmap) ── */
+      div.stButton > button[kind="primary"] {
+        color: #0b1020 !important;
+        background: #36d6c3 !important;
+        border: none !important;
+        font-weight: 700 !important;
       }
-      div.stButton > button p,
-      div.stButton > button span,
-      div.stDownloadButton > button p,
-      div.stDownloadButton > button span {
-        color: #eaf0ff !important;
+      div.stButton > button[kind="primary"]:hover {
+        background: #27b8a7 !important;
+        color: #0b1020 !important;
+      }
+      div.stButton > button[kind="primary"] p,
+      div.stButton > button[kind="primary"] span {
+        color: #0b1020 !important;
       }
 
-      /* Back button — visible but secondary, matches the card/border palette */
+      /* ── Secondary buttons (Back, Retake) ── */
       div.stButton > button:not([kind="primary"]) {
         background: #1b2647 !important;
         color: #8a9bff !important;
@@ -90,13 +95,31 @@ st.markdown(
         color: #8a9bff !important;
       }
 
-      /* FIX 3 — Download button: ensure label text is visible before hover */
+      /* ── Download button — bright amber, always visible, never invisible ── */
       div.stDownloadButton > button {
-        color: #eaf0ff !important;
+        background: #F0A500 !important;
+        color: #0b1020 !important;
+        border: none !important;
+        font-weight: 800 !important;
+        font-size: 0.97rem !important;
+        letter-spacing: 0.01em !important;
         opacity: 1 !important;
       }
+      div.stDownloadButton > button:hover {
+        background: #d4920a !important;
+        color: #0b1020 !important;
+        box-shadow: 0 0 14px rgba(240,165,0,0.40) !important;
+      }
+      /* Force ALL child elements inside the download button dark */
+      div.stDownloadButton > button *,
+      div.stDownloadButton > button p,
+      div.stDownloadButton > button span,
+      div.stDownloadButton > button div {
+        color: #0b1020 !important;
+        font-weight: 800 !important;
+      }
 
-      /* FIX 1 — Author footer: larger font, slightly brighter than original #9aa6c7 */
+      /* ── Author footer ── */
       .author-footer {
         text-align: center;
         font-size: 1.0rem;
@@ -109,7 +132,7 @@ st.markdown(
       }
       .author-footer b { color: #eaf0ff; font-weight: 700; }
       .author-footer a { color: #8a9bff; text-decoration: none; }
-      .author-footer a:hover { text-decoration: underline; }
+      .author-footer a:hover { text-decoration: underline; color: #36d6c3; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -119,7 +142,7 @@ st.markdown(
 # Session state
 # --------------------------------------------------------------------------- #
 if "stage" not in st.session_state:
-    st.session_state.stage = "intro"   # intro -> quiz -> result
+    st.session_state.stage = "intro"
 if "step" not in st.session_state:
     st.session_state.step = 0
 if "answers" not in st.session_state:
@@ -185,7 +208,6 @@ def render_quiz():
     st.subheader(q["title"])
     st.caption(q["help"])
 
-    # Build label -> value maps
     labels = [f"{label} — {desc}" for (_v, label, desc) in q["options"]]
     values = [v for (v, _l, _d) in q["options"]]
     prev = st.session_state.answers.get(q["id"])
@@ -229,7 +251,6 @@ def render_quiz():
                 st.session_state.step += 1
             st.rerun()
 
-    # Persist current selection so Back/Next remembers it even without clicking Next
     if has_answer:
         st.session_state.answers[q["id"]] = selection
 
@@ -242,11 +263,11 @@ ROLE_MAP = {
     "product": "product / business lead", "other": "experienced manager",
 }
 GOAL_MAP = {
-    "lead": "lead and manage AI projects with confidence",
-    "talk": "speak the same language as your technical teams",
+    "lead":     "lead and manage AI projects with confidence",
+    "talk":     "speak the same language as your technical teams",
     "strategy": "make sharper strategic decisions about AI",
-    "career": "stay relevant and grow your career",
-    "curious": "genuinely understand how AI works",
+    "career":   "stay relevant and grow your career",
+    "curious":  "genuinely understand how AI works",
 }
 LEVEL_MAP = {
     "none": "starting from the very beginning",
@@ -256,7 +277,10 @@ LEVEL_MAP = {
 }
 TIME_LABEL = {"high": "6+ hrs/week", "mid": "3–5 hrs/week", "low": "1–2 hrs/week"}
 
-STYLE_LABEL = {"video": "videos", "read": "reading", "course": "structured courses", "hands": "trying tools"}
+STYLE_LABEL = {
+    "video": "videos", "read": "reading",
+    "course": "structured courses", "hands": "trying tools",
+}
 INTEREST_LABEL = {
     "history":   "AI history & background",
     "concepts":  "how AI/ML works (plain English)",
@@ -268,8 +292,7 @@ INTEREST_LABEL = {
 
 
 def profile_text(a: dict) -> str:
-    """A short natural-language description of the learner for the AI prompt."""
-    styles = ", ".join(STYLE_LABEL.get(s, s) for s in (a.get("style") or [])) or "no strong preference"
+    styles    = ", ".join(STYLE_LABEL.get(s, s) for s in (a.get("style") or [])) or "no strong preference"
     interests = ", ".join(INTEREST_LABEL.get(i, i) for i in (a.get("interest") or [])) or "general AI understanding"
     return (
         f"- Role: {ROLE_MAP.get(a.get('role'), 'manager')}\n"
@@ -283,14 +306,12 @@ def profile_text(a: dict) -> str:
 
 
 def answer_signature(a: dict) -> tuple:
-    """Hashable, order-stable signature of the answers (cache key)."""
     def norm(v):
         return tuple(sorted(v)) if isinstance(v, list) else v
     return tuple((q["id"], norm(a.get(q["id"]))) for q in QUESTIONS)
 
 
 def get_ai_result(a: dict, plan: dict):
-    """Fetch (cached) AI suggestions, or None if unavailable. Reused for page + PDF."""
     if not ai_available():
         return None
     existing_titles = tuple(r["title"] for p in plan["phases"] for r in p["resources"])
@@ -299,7 +320,6 @@ def get_ai_result(a: dict, plan: dict):
 
 
 def render_ai_section(name: str, result):
-    """Render personalized AI suggestions from a pre-fetched result."""
     if not result:
         return
     if "error" in result:
@@ -329,7 +349,7 @@ def render_ai_section(name: str, result):
 
 
 def render_result():
-    a = st.session_state.answers
+    a    = st.session_state.answers
     name = st.session_state.get("user_name", "").strip()
     plan = build_roadmap(a)
 
@@ -344,7 +364,6 @@ def render_result():
         unsafe_allow_html=True,
     )
 
-    # Fetch AI suggestions once — reused for the page section and the PDF
     ai_result = get_ai_result(a, plan)
 
     m1, m2, m3, m4 = st.columns(4)
@@ -359,7 +378,7 @@ def render_result():
         st.markdown(f"### {i}. {phase['title']}")
         st.markdown(f'<p class="phase-goal"><b>Goal:</b> {phase["goal"]}</p>', unsafe_allow_html=True)
         for r in phase["resources"]:
-            icon = TYPE_ICON.get(r["type"], "🔗")
+            icon       = TYPE_ICON.get(r["type"], "🔗")
             type_label = TYPE_LABEL.get(r["type"], "Resource")
             chips = (
                 f'<span class="chip type">{type_label}</span>'
@@ -376,7 +395,6 @@ def render_result():
             )
         st.write("")
 
-    # ---- Optional AI layer: personalized fresh picks ----
     render_ai_section(name, ai_result)
 
     st.markdown(
@@ -410,7 +428,7 @@ def render_result():
         pdf_bytes = build_pdf(name, profile_lines, plan, ai_result)
         safe_name = "".join(c for c in name if c.isalnum()) or "my"
         st.download_button(
-            "⬇️ Download my roadmap (PDF)",
+            "⬇️  Free Download — Your AI Roadmap (PDF)",
             data=pdf_bytes,
             file_name=f"{safe_name}_ai_roadmap.pdf",
             mime="application/pdf",
@@ -430,7 +448,7 @@ else:
     render_result()
 
 # --------------------------------------------------------------------------- #
-# Footer — author credit & contact (shown on every screen)
+# Footer
 # --------------------------------------------------------------------------- #
 st.markdown(
     f'<hr style="border-color:#2a3556; margin-top:38px;">'
