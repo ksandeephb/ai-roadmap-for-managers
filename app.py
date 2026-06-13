@@ -61,63 +61,38 @@ st.markdown(
       .tips { background:rgba(108,123,255,0.07); border:1px dashed #2a3556; border-radius:14px; padding:18px 22px; }
       div[data-testid="stMetricValue"] { color:#eaf0ff; }
 
-      /* FIX 2 — Primary buttons: dark text on bright background so label is always visible */
-      div.stButton > button[kind="primary"],
-      div.stDownloadButton > button[kind="primary"] {
-        background: #36d6c3 !important;
-        color: #0b1020 !important;
-        border: none !important;
-        font-weight: 700 !important;
-      }
-      div.stButton > button[kind="primary"]:hover,
-      div.stDownloadButton > button[kind="primary"]:hover {
-        background: #27b8a7 !important;
-        color: #0b1020 !important;
-      }
-
-      /* Secondary / default buttons */
-      div.stButton > button:not([kind="primary"]) {
-        background: #1b2647 !important;
-        color: #eaf0ff !important;
-        border: 1px solid #2a3556 !important;
-        font-weight: 600 !important;
-      }
-      div.stButton > button:not([kind="primary"]):hover {
-        background: #232e5a !important;
-        color: #ffffff !important;
-        border-color: #8a9bff !important;
-      }
-
-      /* FIX 3 — Download button: always show label clearly */
+      /* FIX 2 — Button labels: force #eaf0ff text so they're visible on the dark theme */
+      div.stButton > button,
       div.stDownloadButton > button {
-        background: #8a9bff !important;
-        color: #0b1020 !important;
-        border: none !important;
-        font-weight: 700 !important;
+        color: #eaf0ff !important;
       }
-      div.stDownloadButton > button:hover {
-        background: #6c7cff !important;
-        color: #0b1020 !important;
-      }
-      /* Force the inner span/text inside any download button to be dark */
-      div.stDownloadButton > button * {
-        color: #0b1020 !important;
+      div.stButton > button p,
+      div.stButton > button span,
+      div.stDownloadButton > button p,
+      div.stDownloadButton > button span {
+        color: #eaf0ff !important;
       }
 
-      /* FIX 1 — Author footer: bigger, brighter text */
+      /* FIX 3 — Download button: ensure label text is visible before hover */
+      div.stDownloadButton > button {
+        color: #eaf0ff !important;
+        opacity: 1 !important;
+      }
+
+      /* FIX 1 — Author footer: larger font, slightly brighter than original #9aa6c7 */
       .author-footer {
         text-align: center;
-        font-size: 1.05rem;       /* was 0.85rem */
+        font-size: 1.0rem;
         font-weight: 500;
-        color: #c8d3f0;           /* brighter than #9aa6c7 */
-        padding-bottom: 14px;
+        color: #b0bdd8;
+        padding-bottom: 10px;
         margin-top: 38px;
         border-top: 1px solid #2a3556;
-        padding-top: 18px;
+        padding-top: 16px;
       }
       .author-footer b { color: #eaf0ff; font-weight: 700; }
       .author-footer a { color: #8a9bff; text-decoration: none; }
-      .author-footer a:hover { text-decoration: underline; color: #36d6c3; }
+      .author-footer a:hover { text-decoration: underline; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -199,7 +174,6 @@ def render_quiz():
     prev = st.session_state.answers.get(q["id"])
 
     if q["multi"]:
-        default = [labels[values.index(v)] for v in (prev or []) if v in values]
         chosen = []
         st.write("")
         for label, value in zip(labels, values):
