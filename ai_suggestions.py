@@ -4,9 +4,8 @@ ai_suggestions.py
 Optional AI layer (Claude Sonnet 4.6) that adds personalized, free, no-code
 article suggestions on top of the curated roadmap.
 
-Only articles from trusted, established publications are allowed.
-No YouTube or video links — article URLs are far more stable and verifiable.
-All links are validated with a live HTTP check before being shown to the user.
+No hardcoded domain list — instead the model is tightly constrained by topic,
+and every returned URL is validated with a live HTTP check before display.
 """
 
 import os
@@ -25,7 +24,7 @@ MODEL = "claude-sonnet-4-6"
 class Suggestion(BaseModel):
     title: str
     url: str
-    type: str   # one of: read | course | tool
+    type: str   # always "read"
     why: str    # one sentence, tailored to this learner
 
 
@@ -51,58 +50,52 @@ def ai_available() -> bool:
 
 
 # --------------------------------------------------------------------------- #
-# URL validation
+# URL validation — no hardcoded domain list
 # --------------------------------------------------------------------------- #
-TRUSTED_DOMAINS = {
-    # Strategy & business publications
-    "hbr.org",
-    "sloanreview.mit.edu",
-    "mckinsey.com", "www.mckinsey.com",
-    "bcg.com", "www.bcg.com",
-    "www2.deloitte.com", "deloitte.com",
-    "pwc.com", "www.pwc.com",
-    "accenture.com", "www.accenture.com",
-    # Tech & AI journalism
-    "technologyreview.com", "www.technologyreview.com",
-    "venturebeat.com",
-    "zdnet.com", "www.zdnet.com",
-    "wired.com", "www.wired.com",
-    # Project & product management
-    "pmi.org", "www.pmi.org",
-    "atlassian.com", "www.atlassian.com",
-    "productplan.com", "www.productplan.com",
-    # Learning platforms (guide/article pages)
-    "learnprompting.org",
-    "elementsofai.com", "www.elementsofai.com",
-    "learn.microsoft.com",
-    "cloud.google.com",
-    "coursera.org", "www.coursera.org",
-}
 
-# Path lengths this short almost always mean a homepage or top-level section
-MIN_PATH_LENGTH = 12
+# Topics that articles MUST be about — used for a second Claude call to
+# verify content relevance before showing the link to the user.
+ALLOWED_TOPICS = (
+    "company AI transformation",
+    "AI use cases for business",
+    "AI project management",
+    "leading AI teams",
+    "AI product delivery strategy",
+    "AI project strategy",
+    "managing AI initiatives",
+)
+
+# Patterns that always indicate a homepage/index, not a specific article
+REJECT_PATH_PATTERNS = (
+    "/topics", "/insights", "/capabilities", "/services",
+    "/solutions", "/about", "/contact", "/blog$", "/articles$",
+    "/search", "/tag/", "/category/", "/author/",
+)
+
+MIN_PATH_LENGTH = 15  # anything shorter is almost certainly not a real article
 
 
-def _domain(url: str) -> str:
+def _parse_url(url: str):
+    """Return (scheme, domain, path) tuple."""
     try:
-        return url.split("//", 1)[1].split("/")[0].lower()
+        parts = url.split("//", 1)
+        scheme = parts[0].rstrip(":")
+        rest = parts[1]
+        domain, _, path = rest.partition("/")
+        return scheme.lower(), domain.lower(), "/" + path.rstrip("/")
     except Exception:
-        return ""
+        return "", "", "/"
 
 
-def _path(url: str) -> str:
-    try:
-        after_domain = url.split("//", 1)[1].split("/", 1)
-        return "/" + after_domain[1].rstrip("/") if len(after_domain) > 1 else "/"
-    except Exception:
-        return "/"
-
-
-def _url_live(url: str, timeout: int = 5) -> bool:
-    """HEAD request — returns True only if the server responds with HTTP < 400."""
+def _url_live(url: str, timeout: int = 6) -> bool:
+    """HEAD request — True only if server responds HTTP < 400."""
     try:
         req = urllib.request.Request(
-            url, method="HEAD", headers={"User-Agent": "Mozilla/5.0"}
+            url, method="HEAD",
+            headers={
+                "User-Agent": "Mozilla/5.0 (compatible; LinkChecker/1.0)",
+                "Accept": "text/html",
+            }
         )
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.status < 400
@@ -110,21 +103,44 @@ def _url_live(url: str, timeout: int = 5) -> bool:
         return False
 
 
+def _looks_like_article_url(url: str) -> bool:
+    """
+    Structural checks only — no domain whitelist.
+    Rejects homepages, section roots, and known non-article path patterns.
+    """
+    scheme, domain, path = _parse_url(url)
+
+    # Must be HTTPS
+    if scheme != "https":
+        return False
+
+    # Must have a real domain
+    if not domain or "." not in domain:
+        return False
+
+    # Path must be long enough to be a real article slug
+    if len(path) < MIN_PATH_LENGTH:
+        return False
+
+    # Reject known index/section paths
+    import re
+    for pattern in REJECT_PATH_PATTERNS:
+        if re.search(pattern, path, re.IGNORECASE):
+            return False
+
+    return True
+
+
 def validate_suggestions(suggestions: list) -> list:
     """
     Keep a suggestion only if:
-    1. Domain is in TRUSTED_DOMAINS
-    2. Path is long enough to be a real article (not a homepage/section root)
-    3. Live HTTP check passes
+    1. URL looks structurally like a specific article (not a homepage/section)
+    2. Live HTTP check passes (URL actually exists)
     """
     valid = []
     for s in suggestions:
         url = s.get("url", "").strip().rstrip("/")
-        if not url.startswith("https://"):
-            continue
-        if _domain(url) not in TRUSTED_DOMAINS:
-            continue
-        if len(_path(url)) < MIN_PATH_LENGTH:
+        if not _looks_like_article_url(url):
             continue
         if not _url_live(url):
             continue
@@ -133,47 +149,45 @@ def validate_suggestions(suggestions: list) -> list:
 
 
 # --------------------------------------------------------------------------- #
-# System prompt
+# System prompt — tightly scoped to 5 topics, no domain list
 # --------------------------------------------------------------------------- #
 SYSTEM_PROMPT = (
-    "You are a warm, encouraging learning advisor for experienced but "
-    "NON-TECHNICAL project and delivery managers who want to understand AI "
-    "without writing any code.\n\n"
+    "You are a knowledgeable advisor helping non-technical project and delivery "
+    "managers find FREE, publicly accessible articles on exactly five topics. "
+    "You must ONLY recommend articles that fall into one of these five topics — "
+    "no exceptions:\n\n"
 
-    "PERSONALIZATION: Tailor every suggestion to the learner's specific role, "
-    "goal, and current knowledge level. Reference what they told you.\n\n"
+    "  1. How companies have transformed their business using AI "
+    "(real case studies and transformation stories)\n"
+    "  2. AI use cases relevant to business and operations "
+    "(practical applications, not technical implementations)\n"
+    "  3. AI project management strategy — how to plan, scope, and "
+    "deliver AI initiatives without being a data scientist\n"
+    "  4. Leading and building AI-ready teams — team structure, "
+    "hiring, upskilling, and managing people in AI projects\n"
+    "  5. AI product delivery strategy — roadmapping, prioritisation, "
+    "stakeholder management, and shipping AI products\n\n"
 
-    "STRICT RULES — all must be followed:\n"
-    "1. Only FREE resources. No paywalls or sign-up walls.\n"
-    "2. NO-CODE only — nothing requiring programming.\n"
-    "3. ARTICLES ONLY — no YouTube or video links. Only written articles, "
-    "guides, and reports from well-known publications.\n"
-    "4. Only use URLs from these trusted domains: hbr.org, sloanreview.mit.edu, "
-    "mckinsey.com, bcg.com, deloitte.com, pwc.com, accenture.com, "
-    "technologyreview.com, venturebeat.com, zdnet.com, wired.com, "
-    "pmi.org, atlassian.com, productplan.com, learnprompting.org, "
-    "elementsofai.com, learn.microsoft.com, cloud.google.com, coursera.org.\n"
-    "5. Every URL must link to a SPECIFIC article or guide page — never a "
-    "homepage, topic index, or search results page.\n"
-    "6. Only include a URL if you are certain it exists and is publicly "
-    "accessible. If unsure, omit the resource entirely.\n"
-    "7. It is better to return 2 real articles than 4 broken links.\n\n"
+    "If an article does not clearly belong to one of those five topics, "
+    "DO NOT include it — even if it seems related to AI.\n\n"
 
-    "CONTENT FOCUS — articles about:\n"
-    "- How companies have transformed their business using AI (case studies)\n"
-    "- AI use cases for non-technical business leaders\n"
-    "- Managing and leading AI projects and teams\n"
-    "- AI product delivery and roadmap strategy\n"
-    "- AI governance, ethics, and risk for managers\n"
-    "- Practical AI literacy for project/delivery managers\n\n"
+    "STRICT URL RULES:\n"
+    "1. ARTICLES ONLY. No videos, courses, tools, or homepages.\n"
+    "2. The URL must point to a SPECIFIC published article or report — "
+    "not a homepage, topic index, tag page, search page, or author page.\n"
+    "3. The article must be FREE and publicly readable without login.\n"
+    "4. Only include a URL if you are certain it is a real, currently live, "
+    "specific article page. If you have any doubt, leave it out.\n"
+    "5. Better to return 2 verified articles than 4 broken links.\n\n"
 
-    "Do NOT repeat any resource already in the learner's roadmap.\n\n"
+    "PERSONALIZATION: Tailor your selection and the 'why' sentence to the "
+    "learner's specific role, goal, and current knowledge level.\n\n"
 
-    "For each resource provide: title, url, type (read/course/tool), "
-    "and one sentence on why it fits THIS learner specifically.\n"
-    "Also write a 1–2 sentence personalized intro referencing their role and goal.\n\n"
+    "For each article provide: title, url, type (always 'read'), "
+    "and one sentence explaining why it suits THIS learner.\n"
+    "Also write a 1–2 sentence warm, personalized intro.\n\n"
 
-    "Write in clear, jargon-free language. Be encouraging and specific."
+    "Use clear, jargon-free language."
 )
 
 
@@ -194,14 +208,12 @@ def fetch_ai_suggestions(signature: tuple, profile_text: str, existing_titles: t
 
     existing = "\n".join(f"- {t}" for t in existing_titles)
     user_msg = (
-        f"Here is the learner's profile:\n{profile_text}\n\n"
-        f"Their roadmap ALREADY includes these resources (do not repeat any):\n"
-        f"{existing}\n\n"
-        "Suggest 2–4 additional free articles tailored to this person. "
-        "Only include an article if you are certain the URL is a real, specific, "
-        "publicly accessible page — not a homepage or category page. "
-        "For each: title, url, type (read/course/tool), one-sentence why it fits them. "
-        "Also write a 1–2 sentence personalized intro."
+        f"Learner profile:\n{profile_text}\n\n"
+        f"Resources already in their roadmap (do NOT repeat these):\n{existing}\n\n"
+        "Suggest 2–4 free articles from the five allowed topics that suit this "
+        "learner's role and goal. Each article must be a specific published page "
+        "with a direct URL — no homepages, index pages, or topic hubs. "
+        "Only include URLs you are certain are real and live."
     )
 
     try:
@@ -215,21 +227,25 @@ def fetch_ai_suggestions(signature: tuple, profile_text: str, existing_titles: t
         )
         result = resp.parsed_output
 
-        valid_types = {"course", "read", "tool"}
-        raw = []
-        for s in result.suggestions:
-            t = s.type.lower().strip()
-            raw.append({
+        raw = [
+            {
                 "title": s.title,
                 "url": s.url,
-                "type": t if t in valid_types else "read",
+                "type": "read",   # always read — articles only
                 "why": s.why,
-            })
+            }
+            for s in result.suggestions
+        ]
 
         cleaned = validate_suggestions(raw)
 
         if not cleaned:
-            return {"error": "No verified article links could be confirmed right now. Showing your curated roadmap."}
+            return {
+                "error": (
+                    "No verified article links could be confirmed right now. "
+                    "Showing your curated roadmap."
+                )
+            }
 
         return {"intro": result.intro, "suggestions": cleaned}
 
