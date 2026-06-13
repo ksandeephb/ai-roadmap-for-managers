@@ -1,3 +1,11 @@
-streamlit>=1.36
-anthropic>=0.40
-fpdf2>=2.7
+# Core app
+streamlit>=1.35.0
+
+# AI layer
+anthropic>=0.30.0
+pydantic>=2.0.0
+
+# PDF generation
+reportlab>=4.0.0
+
+# (fpdf2 no longer needed — replaced by reportlab for richer layout)
