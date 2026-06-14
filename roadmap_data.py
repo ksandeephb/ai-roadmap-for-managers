@@ -377,20 +377,42 @@ TYPE_LABEL = {"course": "Course", "video": "Video", "read": "Read", "tool": "Try
 
 
 # --------------------------------------------------------------------------- #
-# Roadmap builder — personalised, max 8 weeks
+# Roadmap builder
+#
+# Design principle: answers GATE content — each question meaningfully changes
+# what appears. The 5 mandatory YouTube videos are always included (they are
+# the non-negotiable foundation), but everything else is conditional.
+#
+# Differentiation matrix:
+#   role     → gates delivery/PM content vs strategy/leadership content
+#   goal     → gates depth of delivery vs strategic resources
+#   level    → gates whether basics or advanced content is shown
+#   time     → caps total resources (low=8, mid=12, high=16)
+#   style    → determines FORMAT of resources (video vs read vs course)
+#   interest → selects TOPIC focus within each phase
 # --------------------------------------------------------------------------- #
 def build_roadmap(answers: dict) -> dict:
-    level    = answers.get("level", "none")
-    interests= answers.get("interest", []) or []
-    styles   = answers.get("style",    []) or []
-    time     = answers.get("time",     "mid")
-    goal     = answers.get("goal",     "lead")
-    role     = answers.get("role",     "pm")
+    level     = answers.get("level",    "none")
+    interests = answers.get("interest", []) or []
+    styles    = answers.get("style",    []) or []
+    time      = answers.get("time",     "mid")
+    goal      = answers.get("goal",     "lead")
+    role      = answers.get("role",     "pm")
 
     likes_video  = "video"  in styles
     likes_read   = "read"   in styles
     likes_course = "course" in styles
     likes_hands  = "hands"  in styles
+
+    # Persona shortcuts — drive major branching
+    is_delivery  = role in ("pm", "scrum")
+    is_strategic = role in ("exec", "product")
+    wants_lead   = goal in ("lead", "talk")
+    wants_strat  = goal in ("strategy", "career")
+    is_beginner  = level in ("none", "buzz")
+    is_advanced  = level in ("user", "some")
+    low_time     = time == "low"
+    high_time    = time == "high"
 
     buckets = {key: [] for key, _, _ in PHASE_TEMPLATES}
 
@@ -398,42 +420,113 @@ def build_roadmap(answers: dict) -> dict:
         if key in RESOURCES and key not in buckets[phase]:
             buckets[phase].append(key)
 
-    # ── Phase 1: Mental model ─────────────────────────────────────────────────
-    push("mental_model", "ai_for_everyone")           # anchor — always
-    push("mental_model", "google_genai_intro_video")  # MUST: Google 22-min — always
+    # ═══════════════════════════════════════════════════════════════════════
+    # PHASE 1 — Mental model
+    # Gated by: level, style, goal
+    # ═══════════════════════════════════════════════════════════════════════
+    # Andrew Ng AI for Everyone: only for beginners or course-style learners
+    if is_beginner or likes_course:
+        push("mental_model", "ai_for_everyone")
 
-    # ── Phase 2: GenAI + tools ────────────────────────────────────────────────
-    push("genai_tools", "ibm_genai_business_video")   # MUST: IBM 14-min — always
-    push("genai_tools", "kniberg_genai_video")        # MUST: Henrik Kniberg 18-min — always
-    push("genai_tools", "3b1b_neural_nets_video")     # MUST: 3Blue1Brown 19-min — always
-    push("genai_tools", "karpathy_llm_video")         # MUST: Karpathy 1-hr — always
-    push("genai_tools", "chatgpt_hands_on")           # hands-on — always
-    if likes_course or "concepts" in interests:
-        push("genai_tools", "genai_for_everyone")     # Andrew Ng GenAI course
+    # Google 22-min video: only if they like video or are complete beginners
+    if likes_video or level == "none":
+        push("mental_model", "google_genai_intro_video")
 
-    # ── Phase 3: Delivery framework ───────────────────────────────────────────
-    push("delivery", "crisp_dm")                      # always — essential for PMs
-    if role in ("pm", "scrum") or goal in ("lead", "talk") or "lifecycle" in interests:
-        push("delivery", "mlops_managers")
+    # Advanced users who already know basics skip Phase 1 entirely
+    # and start at Phase 2 — only add something if they like reading
+    if is_advanced and likes_read and not likes_video and not likes_course:
+        push("mental_model", "ai_for_everyone")  # still useful as reference
 
-    # ── Phase 4: PM practice ──────────────────────────────────────────────────
-    push("pm_practice", "managing_ai_projects")      # always
-    push("pm_practice", "ml_canvas")                 # always
+    # ═══════════════════════════════════════════════════════════════════════
+    # PHASE 2 — GenAI & tools
+    # Gated by: style (video vs course vs read), interest, level
+    # The 5 mandatory videos are here — but gated by style preference
+    # ═══════════════════════════════════════════════════════════════════════
+
+    # VIDEO learners get the 5 canonical videos
+    if likes_video or level == "none":
+        push("genai_tools", "ibm_genai_business_video")    # business angle
+        push("genai_tools", "kniberg_genai_video")         # visual explainer
+
+    # Concepts interest or video style → deeper technical videos
+    if "concepts" in interests or likes_video:
+        push("genai_tools", "3b1b_neural_nets_video")      # neural nets visual
+        push("genai_tools", "karpathy_llm_video")          # LLM deep dive
+
+    # Course-style learners get structured courses instead of/alongside videos
+    if likes_course:
+        push("genai_tools", "genai_for_everyone")          # Andrew Ng GenAI
+
+    # Everyone who uses tools hands-on
+    if likes_hands or "tools" in interests or wants_lead:
+        push("genai_tools", "chatgpt_hands_on")
+
+    # Prompting guide: only if interested in tools or hands-on
     if "tools" in interests or likes_hands:
-        push("pm_practice", "prompting_guide")
+        push("genai_tools", "prompting_guide")
 
-    # ── Phase 5: Strategy & ethics ────────────────────────────────────────────
-    push("strategy_ethics", "responsible_ai")        # always — every PM needs this
-    if role in ("pm", "scrum", "exec") or "strategy" in interests or goal in ("lead", "strategy"):
+    # Ensure Phase 2 always has at least 2 items
+    if len(buckets["genai_tools"]) < 2:
+        push("genai_tools", "ibm_genai_business_video")
+        push("genai_tools", "kniberg_genai_video")
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # PHASE 3 — AI Delivery Framework
+    # Gated by: role, goal, interest in lifecycle
+    # Executives and product leads with no delivery interest skip most of this
+    # ═══════════════════════════════════════════════════════════════════════
+    wants_delivery = is_delivery or wants_lead or "lifecycle" in interests or "managing" in interests
+
+    if wants_delivery:
+        push("delivery", "crisp_dm")           # AI project lifecycle
+        push("delivery", "mlops_managers")     # MLOps for non-technical
+    elif is_strategic and "lifecycle" in interests:
+        push("delivery", "crisp_dm")           # strategic leaders only need overview
+    # Execs with no interest in delivery skip Phase 3 entirely — intentional
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # PHASE 4 — PM Playbook
+    # Gated by: role, goal
+    # Executives and purely strategy-focused skip the PM tactical content
+    # ═══════════════════════════════════════════════════════════════════════
+    wants_pm_content = is_delivery or wants_lead or "managing" in interests
+
+    if wants_pm_content:
+        push("pm_practice", "managing_ai_projects")   # DPM guide
+        push("pm_practice", "ml_canvas")              # scoping tool
+    elif is_strategic and "usecases" in interests:
+        push("pm_practice", "ml_canvas")              # product/exec use for scoping
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # PHASE 5 — Strategy, Ethics & Leadership
+    # Gated by: role, goal, interest
+    # Delivery-focused PMs with no strategy interest get only ethics/risk
+    # Strategic roles get the full set
+    # ═══════════════════════════════════════════════════════════════════════
+
+    # Responsible AI: only if interested in ethics/strategy OR is exec/product
+    if "strategy" in interests or is_strategic or goal == "curious":
+        push("strategy_ethics", "responsible_ai")
+
+    # NIST risk: delivery managers and those who flagged governance interest
+    if is_delivery and (wants_lead or "strategy" in interests):
         push("strategy_ethics", "nist_risk")
-    if "strategy" in interests or goal in ("strategy", "career", "lead"):
+    elif is_strategic:
+        push("strategy_ethics", "nist_risk")
+
+    # McKinsey: strategic roles, career-growth goal, or explicit strategy interest
+    if wants_strat or "strategy" in interests or is_strategic:
         push("strategy_ethics", "mckinsey_state_of_ai")
-    if likes_read and "strategy" in interests and time == "high":
+
+    # HBR: readers who flagged strategy and have time
+    if likes_read and ("strategy" in interests or is_strategic) and not low_time:
         push("strategy_ethics", "hbr_ai")
-    if goal in ("lead", "strategy") or role in ("exec", "product"):
+
+    # GenAI for Leaders capstone: strategic roles or leadership goal with time
+    if (is_strategic or wants_strat) and not low_time:
         push("strategy_ethics", "genai_for_leaders")
 
-    # ── Build phases ──────────────────────────────────────────────────────────
+    # ── Build phases — skip empty ones ─────────────────────────────────────
     phases = []
     for key, title, goal_text in PHASE_TEMPLATES:
         res = [RESOURCES[k] for k in buckets[key]]
