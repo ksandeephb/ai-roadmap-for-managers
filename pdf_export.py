@@ -121,7 +121,7 @@ class _Deco:
             # Single teal accent line at band bottom
             canvas.setFillColor(TEAL)
             canvas.rect(0, H - HEADER_H, W, 4, fill=1, stroke=0)
-            # Small teal pill
+            # Small teal pill — top left
             canvas.setFillColor(TEAL)
             canvas.roundRect(M, H - 10*mm, 50*mm, 5*mm, 2, fill=1, stroke=0)
             canvas.setFont("Helvetica-Bold", 6.5)
@@ -135,6 +135,41 @@ class _Deco:
             canvas.setFont("Helvetica", 9)
             canvas.setFillColor(colors.HexColor("#8AAAB0"))
             canvas.drawString(M, H - 27*mm, self.subtitle)
+
+            # ── Author box — flush right, bottom of header band ────────────────
+            ab_w  = 58*mm
+            ab_h  = 13*mm
+            ab_x  = W - ab_w
+            ab_y  = H - HEADER_H + 5
+
+            canvas.setFillColor(colors.HexColor("#1E2D1A"))
+            canvas.rect(ab_x, ab_y, ab_w, ab_h, fill=1, stroke=0)
+            canvas.setFillColor(TEAL)
+            canvas.rect(ab_x, ab_y, 3, ab_h, fill=1, stroke=0)
+            canvas.setStrokeColor(colors.HexColor("#3A9BA5"))
+            canvas.setLineWidth(0.6)
+            canvas.line(ab_x, ab_y, ab_x, ab_y + ab_h)
+            canvas.line(ab_x, ab_y + ab_h, ab_x + ab_w, ab_y + ab_h)
+            canvas.line(ab_x, ab_y, ab_x + ab_w, ab_y)
+
+            # Line 1: email
+            canvas.setFont("Helvetica", 7.5)
+            canvas.setFillColor(colors.HexColor("#9DBEC4"))
+            canvas.drawString(ab_x + 5*mm, ab_y + ab_h - 5*mm, _t(AUTHOR_EMAIL))
+
+            # Line 2: "Sandeep - LinkedIn" as clickable link
+            li_text = "Sandeep - LinkedIn"
+            canvas.setFont("Helvetica-Bold", 7.5)
+            canvas.setFillColor(colors.HexColor("#5CC8D4"))
+            canvas.drawString(ab_x + 5*mm, ab_y + ab_h - 9.5*mm, li_text)
+            li_tw = canvas.stringWidth(li_text, "Helvetica-Bold", 7.5)
+            canvas.setStrokeColor(colors.HexColor("#5CC8D4"))
+            canvas.setLineWidth(0.4)
+            canvas.line(ab_x + 5*mm, ab_y + ab_h - 10*mm,
+                        ab_x + 5*mm + li_tw, ab_y + ab_h - 10*mm)
+            canvas.linkURL(AUTHOR_LINKEDIN,
+                (ab_x + 4*mm, ab_y + ab_h - 12*mm,
+                 ab_x + 5*mm + li_tw + 1, ab_y + ab_h - 8*mm), relative=0)
         else:
             # Slim teal bar on continuation pages
             canvas.setFillColor(TEAL)
@@ -143,35 +178,43 @@ class _Deco:
             canvas.setFillColor(MUTED)
             canvas.drawString(M, H - 3.2*mm, self.title)
 
-        # ── Footer ────────────────────────────────────────────────────────────
+        # ── Footer — clean single line on every page ─────────────────────────
         fy = 11 * mm
         canvas.setStrokeColor(BORDER)
         canvas.setLineWidth(0.4)
         canvas.line(M, fy + 5.5*mm, W - M, fy + 5.5*mm)
 
-        canvas.setFont("Helvetica-Bold", 8.5)
+        # Name — bold
+        canvas.setFont("Helvetica-Bold", 8)
         canvas.setFillColor(DARK)
         canvas.drawString(M, fy + 1.5*mm, _t(AUTHOR_NAME))
 
+        # Separator + email
+        name_w = canvas.stringWidth(_t(AUTHOR_NAME), "Helvetica-Bold", 8)
         canvas.setFont("Helvetica", 7.5)
         canvas.setFillColor(MUTED)
-        canvas.drawString(M + 37*mm, fy + 1.5*mm, _t(AUTHOR_EMAIL))
+        canvas.drawString(M + name_w + 2*mm, fy + 1.5*mm, "|")
+        canvas.drawString(M + name_w + 4.5*mm, fy + 1.5*mm, _t(AUTHOR_EMAIL))
 
-        pg = f"Page {doc.page}"
-        pg_w = canvas.stringWidth(pg, "Helvetica", 7.5)
-        canvas.drawRightString(W - M, fy + 1.5*mm, pg)
-
-        li_label = "LinkedIn"
-        canvas.setFont("Helvetica-Bold", 8)
-        li_w = canvas.stringWidth(li_label, "Helvetica-Bold", 8)
-        li_x = W - M - pg_w - 8*mm - li_w
+        # LinkedIn — teal, underlined, after email
+        email_w = canvas.stringWidth(_t(AUTHOR_EMAIL), "Helvetica", 7.5)
+        li_x = M + name_w + 4.5*mm + email_w + 3*mm
+        li_label = "LinkedIn Profile"
+        canvas.setFont("Helvetica-Bold", 7.5)
         canvas.setFillColor(TEAL)
         canvas.drawString(li_x, fy + 1.5*mm, li_label)
+        li_w = canvas.stringWidth(li_label, "Helvetica-Bold", 7.5)
         canvas.setStrokeColor(TEAL)
         canvas.setLineWidth(0.4)
         canvas.line(li_x, fy + 0.8*mm, li_x + li_w, fy + 0.8*mm)
         canvas.linkURL(AUTHOR_LINKEDIN,
             (li_x, fy - 0.5*mm, li_x + li_w, fy + 4*mm), relative=0)
+
+        # Page number — right
+        pg = f"Page {doc.page}"
+        canvas.setFont("Helvetica", 7.5)
+        canvas.setFillColor(MUTED)
+        canvas.drawRightString(W - M, fy + 1.5*mm, pg)
 
         canvas.restoreState()
 
