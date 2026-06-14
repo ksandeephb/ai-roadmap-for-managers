@@ -26,10 +26,10 @@ QUESTIONS = [
         "help": "We use this to frame examples in language you already speak.",
         "multi": False,
         "options": [
-            ("pm",      "📋 Project Manager",            "Plans, schedules, delivery on time & budget"),
-            ("dm",      "🚚 Delivery / Program Manager", "Oversees teams, outcomes & stakeholders"),
-            ("product", "🧭 Product / Business Lead",    "Owns strategy, roadmap & value"),
-            ("other",   "👤 Other leadership role",      "Experienced, non-technical manager"),
+            ("pm",      "📋 Project / Delivery Manager",    "Plans, schedules, manages risk & delivery"),
+            ("product", "🧭 Product Owner / Business Lead",  "Owns the roadmap, strategy & business value"),
+            ("scrum",   "⚡ Scrum Master / Agile Lead",      "Facilitates teams, ceremonies & agility"),
+            ("exec",    "🎯 Senior Leader / Executive",      "Sets AI direction, governs investment & strategy"),
         ],
     },
     {
@@ -413,7 +413,7 @@ def build_roadmap(answers: dict) -> dict:
 
     # ── Phase 3: Delivery framework ───────────────────────────────────────────
     push("delivery", "crisp_dm")                      # always — essential for PMs
-    if role in ("pm", "dm") or goal in ("lead", "talk") or "lifecycle" in interests:
+    if role in ("pm", "scrum") or goal in ("lead", "talk") or "lifecycle" in interests:
         push("delivery", "mlops_managers")
 
     # ── Phase 4: PM practice ──────────────────────────────────────────────────
@@ -424,13 +424,13 @@ def build_roadmap(answers: dict) -> dict:
 
     # ── Phase 5: Strategy & ethics ────────────────────────────────────────────
     push("strategy_ethics", "responsible_ai")        # always — every PM needs this
-    if role in ("pm", "dm") or "strategy" in interests or goal in ("lead", "strategy"):
+    if role in ("pm", "scrum", "exec") or "strategy" in interests or goal in ("lead", "strategy"):
         push("strategy_ethics", "nist_risk")
     if "strategy" in interests or goal in ("strategy", "career", "lead"):
         push("strategy_ethics", "mckinsey_state_of_ai")
     if likes_read and "strategy" in interests and time == "high":
         push("strategy_ethics", "hbr_ai")
-    if goal in ("lead",) or role == "dm":
+    if goal in ("lead", "strategy") or role in ("exec", "product"):
         push("strategy_ethics", "genai_for_leaders")
 
     # ── Build phases ──────────────────────────────────────────────────────────
