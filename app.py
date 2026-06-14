@@ -259,8 +259,10 @@ def render_quiz():
 # Result screen
 # --------------------------------------------------------------------------- #
 ROLE_MAP = {
-    "pm": "project manager", "dm": "delivery / program manager",
-    "product": "product / business lead", "other": "experienced manager",
+    "pm":      "project / delivery manager",
+    "product": "product owner / business lead",
+    "scrum":   "scrum master / agile lead",
+    "exec":    "senior leader / executive",
 }
 GOAL_MAP = {
     "lead":     "lead and manage AI projects with confidence",
