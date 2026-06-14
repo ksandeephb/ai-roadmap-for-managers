@@ -320,7 +320,7 @@ st.markdown(f"""
   }}
 
   /* Share / Email buttons — same amber as download */
-  div.stLinkButton > a {
+  div.stLinkButton > a {{
     background: #F0A500 !important;
     color: #0b1020 !important;
     border: none !important;
@@ -334,16 +334,16 @@ st.markdown(f"""
     align-items: center !important;
     justify-content: center !important;
     width: 100% !important;
-  }
-  div.stLinkButton > a:hover {
+  }}
+  div.stLinkButton > a:hover {{
     background: #d4920a !important;
     color: #0b1020 !important;
     box-shadow: 0 0 14px rgba(240,165,0,0.40) !important;
-  }
-  div.stLinkButton > a * {
+  }}
+  div.stLinkButton > a * {{
     color: #0b1020 !important;
     font-weight: 800 !important;
-  }
+  }}
 
   /* Author footer */
   .author-footer {{
