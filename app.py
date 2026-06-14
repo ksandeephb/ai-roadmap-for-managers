@@ -229,8 +229,58 @@ st.markdown(f"""
   .next-title {{ font-weight:600; font-size:0.95rem; color:{TEXT}; }}
   .next-desc  {{ font-size:0.85rem; color:{MUTED}; margin-top:4px; }}
 
-  /* Chat */
-  .chat-wrap {{ background:{CARD_BG}; border:1px solid {CARD_BR}; border-radius:14px; padding:16px; margin-top:8px; }}
+  /* Chat assistant widget */
+  .ai-assistant-wrap {{
+    background: linear-gradient(135deg, rgba(54,214,195,0.08), rgba(108,123,255,0.08));
+    border: 1px solid rgba(54,214,195,0.30);
+    border-radius: 16px; margin: 8px 0 16px; overflow: hidden;
+  }}
+  .ai-assistant-header {{
+    background: linear-gradient(90deg, rgba(54,214,195,0.18), rgba(108,123,255,0.12));
+    border-bottom: 1px solid rgba(54,214,195,0.20);
+    padding: 14px 18px; display: flex; align-items: center; gap: 10px;
+  }}
+  .ai-avatar {{
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, #36d6c3, #8a9bff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }}
+  .ai-header-text {{ flex: 1; }}
+  .ai-name {{ font-weight: 700; font-size: 0.95rem; color: {TEXT}; }}
+  .ai-status {{ font-size: 0.75rem; color: #36d6c3; }}
+  .ai-status::before {{ content: "●"; margin-right: 4px; }}
+  .ai-messages {{ padding: 14px 18px; max-height: 320px; overflow-y: auto; }}
+  .ai-msg-bot {{
+    display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start;
+  }}
+  .ai-msg-bot-bubble {{
+    background: rgba(54,214,195,0.10); border: 1px solid rgba(54,214,195,0.20);
+    border-radius: 12px 12px 12px 2px; padding: 10px 14px;
+    font-size: 0.88rem; color: {TEXT}; line-height: 1.5; max-width: 85%;
+  }}
+  .ai-msg-user {{
+    display: flex; gap: 10px; margin-bottom: 12px; align-items: flex-start;
+    flex-direction: row-reverse;
+  }}
+  .ai-msg-user-bubble {{
+    background: rgba(138,155,255,0.15); border: 1px solid rgba(138,155,255,0.25);
+    border-radius: 12px 12px 2px 12px; padding: 10px 14px;
+    font-size: 0.88rem; color: {TEXT}; line-height: 1.5; max-width: 85%;
+  }}
+  .ai-msg-avatar {{
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 14px;
+  }}
+  .ai-msg-avatar.bot {{ background: linear-gradient(135deg,#36d6c3,#8a9bff); }}
+  .ai-msg-avatar.user {{ background: rgba(138,155,255,0.25); }}
+  .ai-input-area {{ padding: 10px 18px 14px; border-top: 1px solid rgba(54,214,195,0.15); }}
+  .ai-suggestions {{ padding: 0 18px 14px; display: flex; gap: 8px; flex-wrap: wrap; }}
+  .ai-suggestion-chip {{
+    font-size: 0.75rem; padding: 5px 11px; border-radius: 999px;
+    background: rgba(54,214,195,0.08); border: 1px solid rgba(54,214,195,0.25);
+    color: #36d6c3; cursor: pointer; white-space: nowrap;
+  }}
 
   /* Metric */
   div[data-testid="stMetricValue"] {{ color:{TEXT}; }}
@@ -268,6 +318,32 @@ st.markdown(f"""
   div.stDownloadButton > button span, div.stDownloadButton > button div {{
     color: #0b1020 !important; font-weight: 800 !important;
   }}
+
+  /* Share / Email buttons — same amber as download */
+  div.stLinkButton > a {
+    background: #F0A500 !important;
+    color: #0b1020 !important;
+    border: none !important;
+    font-weight: 800 !important;
+    font-size: 0.97rem !important;
+    opacity: 1 !important;
+    text-decoration: none !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 1rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  div.stLinkButton > a:hover {
+    background: #d4920a !important;
+    color: #0b1020 !important;
+    box-shadow: 0 0 14px rgba(240,165,0,0.40) !important;
+  }
+  div.stLinkButton > a * {
+    color: #0b1020 !important;
+    font-weight: 800 !important;
+  }
 
   /* Author footer */
   .author-footer {{
@@ -767,33 +843,105 @@ def render_result():
             )
     st.markdown("</div>", unsafe_allow_html=True)
 
-    # ── AI Chat — visually prominent card ─────────────────────────────────────
+    # ── AI Assistant — proper chatbot UI ────────────────────────────────────
     st.write("")
+
+    # Header
     st.markdown(
-        '<div style="background:linear-gradient(135deg,rgba(138,155,255,0.15),rgba(54,214,195,0.10));' +
-        'border:1px solid rgba(138,155,255,0.35);border-radius:16px;padding:20px 22px;margin:8px 0 16px;">' +
-        '<div style="font-size:1.1rem;font-weight:700;color:#8a9bff;margin-bottom:4px;">' +
-        '💬 Ask about your roadmap</div>' +
-        '<div style="color:#9aa6c7;font-size:0.88rem;margin-bottom:12px;">' +
-        'Ask me why a resource is here, how to fit it into your week, or what any concept means.' +
+        '<div class="ai-assistant-wrap">'
+        '<div class="ai-assistant-header">'
+        '<div class="ai-avatar">🤖</div>'
+        '<div class="ai-header-text">'
+        '<div class="ai-name">AI Roadmap Assistant</div>'
+        '<div class="ai-status">Online — Ask me anything about your roadmap</div>'
+        '</div>'
         '</div>',
         unsafe_allow_html=True,
     )
-    for msg in st.session_state.chat_history:
-        role_icon = "🧑" if msg["role"] == "user" else "🤖"
-        st.markdown(f"**{role_icon}** {msg['content']}")
-    user_input = st.chat_input("Ask anything about your roadmap…", key="chat_input")
+
+    # Suggestion chips for first-time users
+    if not st.session_state.chat_history:
+        suggestions = [
+            "Why is this roadmap right for me?",
+            "How do I fit this into my week?",
+            "What does CRISP-DM mean?",
+            "Which resource should I start with?",
+        ]
+        st.markdown('<div class="ai-suggestions">', unsafe_allow_html=True)
+        scols = st.columns(len(suggestions))
+        for si, (scol, sug) in enumerate(zip(scols, suggestions)):
+            with scol:
+                if st.button(sug, key=f"sug_{si}", use_container_width=True):
+                    st.session_state.chat_history.append({"role": "user", "content": sug})
+                    with st.spinner(""):
+                        reply = _chat_response(sug, plan, a)
+                    st.session_state.chat_history.append({"role": "assistant", "content": reply})
+                    st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Welcome message
+        welcome = (
+            f"Hi {name}! 👋 I know your roadmap inside-out. "
+            "Ask me why a resource is here, how to pace your learning, "
+            "what any AI concept means, or how to apply this to your work."
+        ) if name else (
+            "Hi! 👋 I know your roadmap inside-out. "
+            "Ask me why a resource is included, how to pace your learning, "
+            "or what any AI concept means."
+        )
+        st.markdown(
+            '<div class="ai-messages">'
+            '<div class="ai-msg-bot">'
+            '<div class="ai-msg-avatar bot">🤖</div>'
+            f'<div class="ai-msg-bot-bubble">{welcome}</div>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        # Render full conversation
+        msgs_html = '<div class="ai-messages">'
+        for msg in st.session_state.chat_history:
+            if msg["role"] == "user":
+                msgs_html += (
+                    '<div class="ai-msg-user">'
+                    '<div class="ai-msg-avatar user">🧑</div>'
+                    f'<div class="ai-msg-user-bubble">{msg["content"]}</div>'
+                    '</div>'
+                )
+            else:
+                msgs_html += (
+                    '<div class="ai-msg-bot">'
+                    '<div class="ai-msg-avatar bot">🤖</div>'
+                    f'<div class="ai-msg-bot-bubble">{msg["content"]}</div>'
+                    '</div>'
+                )
+        msgs_html += '</div>'
+        st.markdown(msgs_html, unsafe_allow_html=True)
+
+    # Close the wrapper div
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Text input OUTSIDE the styled div (Streamlit requirement)
+    # but visually connected with matching border styling
+    st.markdown(
+        "<div style='background:rgba(54,214,195,0.05);border:1px solid rgba(54,214,195,0.25);"
+        "border-top:none;border-radius:0 0 16px 16px;padding:4px 12px 8px;'>",
+        unsafe_allow_html=True,
+    )
+    user_input = st.chat_input("Type your question here…", key="chat_input")
+    if st.session_state.chat_history:
+        if st.button("🗑 Clear conversation", key="clear_chat"):
+            st.session_state.chat_history = []
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
     if user_input:
         st.session_state.chat_history.append({"role": "user", "content": user_input})
-        with st.spinner("Thinking…"):
+        with st.spinner("AI is thinking…"):
             reply = _chat_response(user_input, plan, a)
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
         st.rerun()
-    if st.session_state.chat_history:
-        if st.button("Clear chat", key="clear_chat"):
-            st.session_state.chat_history = []
-            st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
     # ── Tips ────────────────────────────────────────────────────────────────
     st.write("")
