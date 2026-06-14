@@ -28,6 +28,7 @@ from roadmap_data import (
     build_roadmap,
 )
 from ai_suggestions import ai_available, fetch_ai_suggestions
+from ai_roadmap_builder import get_roadmap, ai_brain_available
 from pdf_export import build_pdf, AUTHOR_NAME, AUTHOR_EMAIL, AUTHOR_LINKEDIN
 
 # --------------------------------------------------------------------------- #
@@ -545,7 +546,10 @@ def render_result():
     a    = st.session_state.answers
     name = st.session_state.get("user_name", "").strip()
     role = a.get("role", "pm")
-    plan = build_roadmap(a)
+    # Use AI brain if available, rule-based fallback otherwise
+    with st.spinner("🧠 Building your personalised roadmap…") if ai_brain_available() else st.empty():
+        plan = get_roadmap(a)
+    ai_built = plan.get("ai_built", False)
 
     # Theme toggle
     _, tcol = st.columns([5, 1])
@@ -558,12 +562,25 @@ def render_result():
     st.markdown('<span class="eyebrow">Your personalized roadmap</span>', unsafe_allow_html=True)
     title = f"{name}, here's your personalized AI roadmap" if name else "Your no-code path to AI"
     st.title(title)
-    st.markdown(
-        f'<p class="sub">As a <b>{ROLE_MAP.get(role,"manager")}</b> who wants to '
-        f'<b>{GOAL_MAP.get(a.get("goal"),"understand AI")}</b> — '
-        f'everything below is <b>free</b> and requires <b>no coding</b>.</p>',
-        unsafe_allow_html=True,
-    )
+    personalised_intro = plan.get("personalised_intro", "")
+    if personalised_intro and ai_built:
+        st.markdown(
+            f'<p class="sub">{personalised_intro}</p>',
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            '<span style="font-size:0.75rem;color:#36d6c3;background:rgba(54,214,195,0.10);' +
+            'border:1px solid rgba(54,214,195,0.25);padding:3px 10px;border-radius:999px;">' +
+            '🧠 Roadmap built by AI — personalised for your answers</span>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f'<p class="sub">As a <b>{ROLE_MAP.get(role,"manager")}</b> who wants to '
+            f'<b>{GOAL_MAP.get(a.get("goal"),"understand AI")}</b> — '
+            f'everything below is <b>free</b> and requires <b>no coding</b>.</p>',
+            unsafe_allow_html=True,
+        )
 
     ai_result = get_ai_result(a, plan)
 
@@ -668,12 +685,16 @@ def render_result():
             rating_html = f'<div class="res-rating">{rating}</div>' if rating else ""
             why_html    = f'<div class="res-why">💡 {why}</div>' if why else ""
 
+            ai_reason      = r.get("ai_reason", "")
+            ai_reason_html = (f'<div class="res-why">🧠 {ai_reason}</div>'
+                              if ai_reason and ai_built else "")
             st.markdown(
                 f'<div class="res-card{"" if not is_done else ""}" style="opacity:{"0.6" if is_done else "1"}">'
                 f'<div class="res-title">{badge} {icon} '
                 f'<a href="{r["url"]}" target="_blank">{r["title"]} ↗</a></div>'
                 f'{rating_html}'
                 f'<div class="res-desc">{r["desc"]}</div>'
+                f'{ai_reason_html}'
                 f'{why_html}'
                 f'<span class="chip type">{type_label}</span>'
                 f'<span class="chip free">Free</span>'
@@ -713,7 +734,69 @@ def render_result():
                 st.markdown(f"&nbsp;&nbsp;{icon} [{r['title']}]({r['url']})", unsafe_allow_html=True)
             st.write("")
 
+    # ── What's Next — visually prominent, NOT hidden in expander ────────────
+    st.write("")
+    st.markdown(
+        f'<div style="background:linear-gradient(135deg,rgba(54,214,195,0.15),rgba(138,155,255,0.15));'
+        f'border:1px solid rgba(54,214,195,0.3);border-radius:16px;padding:20px 22px;margin:8px 0 16px;">' +
+        '<div style="font-size:1.1rem;font-weight:700;color:#36d6c3;margin-bottom:4px;">'
+        '🚀 Whats next after this roadmap?</div>' +
+        '<div style="color:#9aa6c7;font-size:0.88rem;margin-bottom:14px;">'
+        'Ready to go deeper? Here are your next moves after completing this roadmap.</div>',
+        unsafe_allow_html=True,
+    )
+    next_steps = [
+        ("Google Cloud AI Essentials", "https://www.coursera.org/learn/google-cloud-ai-essentials",
+         "Structured next step — AI tools in the Google ecosystem. Free to audit."),
+        ("PMI AI in Project Management", "https://www.pmi.org/certifications/artificial-intelligence",
+         "Formal recognition of your AI PM skills from the worlds top PM body."),
+        ("MIT Sloan AI Strategy for Business", "https://sloanreview.mit.edu/big-ideas/artificial-intelligence/",
+         "Ongoing research and strategy articles from MIT. Bookmark and read weekly."),
+        ("Build your first AI proof-of-concept", "https://www.ownml.co/machine-learning-canvas",
+         "Use the ML Canvas to scope a real AI initiative at your organisation."),
+    ]
+    nc1, nc2 = st.columns(2)
+    for idx, (title, url, desc) in enumerate(next_steps):
+        col = nc1 if idx % 2 == 0 else nc2
+        with col:
+            st.markdown(
+                f'<div class="next-card">' +
+                f'<div class="next-title"><a href="{url}" target="_blank">{title} ↗</a></div>' +
+                f'<div class="next-desc">{desc}</div></div>',
+                unsafe_allow_html=True,
+            )
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── AI Chat — visually prominent card ─────────────────────────────────────
+    st.write("")
+    st.markdown(
+        '<div style="background:linear-gradient(135deg,rgba(138,155,255,0.15),rgba(54,214,195,0.10));' +
+        'border:1px solid rgba(138,155,255,0.35);border-radius:16px;padding:20px 22px;margin:8px 0 16px;">' +
+        '<div style="font-size:1.1rem;font-weight:700;color:#8a9bff;margin-bottom:4px;">' +
+        '💬 Ask about your roadmap</div>' +
+        '<div style="color:#9aa6c7;font-size:0.88rem;margin-bottom:12px;">' +
+        'Ask me why a resource is here, how to fit it into your week, or what any concept means.' +
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    for msg in st.session_state.chat_history:
+        role_icon = "🧑" if msg["role"] == "user" else "🤖"
+        st.markdown(f"**{role_icon}** {msg['content']}")
+    user_input = st.chat_input("Ask anything about your roadmap…", key="chat_input")
+    if user_input:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        with st.spinner("Thinking…"):
+            reply = _chat_response(user_input, plan, a)
+        st.session_state.chat_history.append({"role": "assistant", "content": reply})
+        st.rerun()
+    if st.session_state.chat_history:
+        if st.button("Clear chat", key="clear_chat"):
+            st.session_state.chat_history = []
+            st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
     # ── Tips ────────────────────────────────────────────────────────────────
+    st.write("")
     st.markdown(
         '<div class="tips">'
         "<h4>How to make this stick</h4>"
@@ -726,55 +809,7 @@ def render_result():
         unsafe_allow_html=True,
     )
 
-    # ── What's next ──────────────────────────────────────────────────────────
-    st.write("")
-    with st.expander("🚀 What's next after this roadmap?"):
-        next_steps = [
-            ("Google Cloud AI Essentials", "https://www.coursera.org/learn/google-cloud-ai-essentials",
-             "Structured next step — covers AI tools in the Google ecosystem. Free to audit."),
-            ("PMI AI in Project Management Certification",
-             "https://www.pmi.org/certifications/artificial-intelligence",
-             "Formal recognition of your AI PM skills from the world's top PM body."),
-            ("MIT Sloan AI Strategy for Business Leaders",
-             "https://sloanreview.mit.edu/big-ideas/artificial-intelligence/",
-             "Ongoing research and strategy articles from MIT. Bookmark and read weekly."),
-            ("Build your first AI proof-of-concept",
-             "https://www.ownml.co/machine-learning-canvas",
-             "Use the ML Canvas to scope a real AI initiative at your organisation."),
-        ]
-        for title, url, desc in next_steps:
-            st.markdown(
-                f'<div class="next-card">'
-                f'<div class="next-title"><a href="{url}" target="_blank">{title} ↗</a></div>'
-                f'<div class="next-desc">{desc}</div>'
-                f"</div>",
-                unsafe_allow_html=True,
-            )
 
-    # ── AI chat assistant ────────────────────────────────────────────────────
-    st.write("")
-    with st.expander("💬 Ask about your roadmap — AI assistant"):
-        st.markdown('<div class="chat-wrap">', unsafe_allow_html=True)
-        st.caption("Ask me anything about your roadmap — why a resource is included, how to fit it into your week, or what any concept means.")
-
-        # Display chat history
-        for msg in st.session_state.chat_history:
-            role_icon = "🧑" if msg["role"] == "user" else "🤖"
-            st.markdown(f"**{role_icon}** {msg['content']}")
-
-        user_input = st.chat_input("Ask a question about your roadmap…", key="chat_input")
-        if user_input:
-            st.session_state.chat_history.append({"role": "user", "content": user_input})
-            with st.spinner("Thinking…"):
-                reply = _chat_response(user_input, plan, a)
-            st.session_state.chat_history.append({"role": "assistant", "content": reply})
-            st.rerun()
-
-        if st.session_state.chat_history:
-            if st.button("Clear chat", key="clear_chat"):
-                st.session_state.chat_history = []
-                st.rerun()
-        st.markdown("</div>", unsafe_allow_html=True)
 
     # ── Actions row ─────────────────────────────────────────────────────────
     st.write("")
