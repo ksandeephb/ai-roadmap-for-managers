@@ -526,14 +526,76 @@ def build_roadmap(answers: dict) -> dict:
     if (is_strategic or wants_strat) and not low_time:
         push("strategy_ethics", "genai_for_leaders")
 
-    # ── Build phases — skip empty ones ─────────────────────────────────────
+    # ── Hard caps by role + time BEFORE building phases ─────────────────────
+    # These caps override interest/style selections to keep the roadmap
+    # realistic and respect the time commitment the user declared.
+    #
+    # Priority order within each phase when trimming:
+    #   videos first (high value, low time), then reads, then extra courses
+    #
+    # Role caps (max resources regardless of time):
+    ROLE_CAP = {"exec": 8, "product": 10, "scrum": 11, "pm": 14}
+    role_cap = ROLE_CAP.get(role, 12)
+
+    # Time caps (absolute max):
+    TIME_CAP = {"low": 7, "mid": 11, "high": 15}
+    hard_cap = min(role_cap, TIME_CAP.get(time, 11))
+
+    # Trim each bucket to keep the highest-priority items
+    # Priority: video > course > read > tool (within delivery phases)
+    # For strategy phase: read > course > tool
+    PRIORITY = {"video": 0, "course": 1, "read": 2, "tool": 3}
+
+    def trim_bucket(bucket_keys, max_items):
+        if len(bucket_keys) <= max_items:
+            return bucket_keys
+        scored = sorted(bucket_keys,
+                        key=lambda k: PRIORITY.get(RESOURCES[k]["type"], 9))
+        return scored[:max_items]
+
+    # Phase-level caps based on role
+    phase_caps = {
+        "mental_model":    2 if is_strategic else 2,
+        "genai_tools":     3 if low_time else (4 if not high_time else 6),
+        "delivery":        1 if is_strategic else (2 if not high_time else 3),
+        "pm_practice":     1 if is_strategic else 2,
+        "strategy_ethics": 2 if is_delivery and not wants_strat else 3,
+    }
+
+    for phase_key, max_items in phase_caps.items():
+        buckets[phase_key] = trim_bucket(buckets[phase_key], max_items)
+
+    # ── Build phases — skip empty ones ───────────────────────────────────────
     phases = []
     for key, title, goal_text in PHASE_TEMPLATES:
         res = [RESOURCES[k] for k in buckets[key]]
         if res:
             phases.append({"title": title, "goal": goal_text, "resources": res})
 
-    total    = sum(len(p["resources"]) for p in phases)
+    total = sum(len(p["resources"]) for p in phases)
+
+    # Final safety trim — enforce hard_cap across all phases if still over
+    if total > hard_cap:
+        # Remove from least-critical phases first (strategy, then delivery)
+        trim_order = ["strategy_ethics", "delivery", "pm_practice",
+                      "genai_tools", "mental_model"]
+        for phase_key in trim_order:
+            if total <= hard_cap:
+                break
+            over = total - hard_cap
+            if len(buckets[phase_key]) > 1:
+                remove = min(over, len(buckets[phase_key]) - 1)
+                buckets[phase_key] = buckets[phase_key][:-remove]
+                total -= remove
+
+        # Rebuild phases after final trim
+        phases = []
+        for key, title, goal_text in PHASE_TEMPLATES:
+            res = [RESOURCES[k] for k in buckets[key]]
+            if res:
+                phases.append({"title": title, "goal": goal_text, "resources": res})
+        total = sum(len(p["resources"]) for p in phases)
+
     per_week = {"high": 5.0, "mid": 3.0, "low": 1.5}.get(time, 3.0)
     weeks    = min(8, max(3, math.ceil(total / per_week)))
 
