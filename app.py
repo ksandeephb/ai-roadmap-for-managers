@@ -922,25 +922,34 @@ def render_result():
     # Close the wrapper div
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Text input OUTSIDE the styled div (Streamlit requirement)
-    # but visually connected with matching border styling
-    st.markdown(
-        "<div style='background:rgba(54,214,195,0.05);border:1px solid rgba(54,214,195,0.25);"
-        "border-top:none;border-radius:0 0 16px 16px;padding:4px 12px 8px;'>",
-        unsafe_allow_html=True,
-    )
-    user_input = st.chat_input("Type your question here…", key="chat_input")
-    if st.session_state.chat_history:
+    # Input row — st.text_input is always visible unlike st.chat_input
+    col_inp, col_send = st.columns([5, 1])
+    with col_inp:
+        user_input = st.text_input(
+            "chat_question",
+            placeholder="💬 Type your question here — e.g. Why is CRISP-DM in my roadmap?",
+            label_visibility="collapsed",
+            key="chat_text",
+        )
+    with col_send:
+        send = st.button("Send ➤", type="primary", use_container_width=True, key="chat_send")
+
+    if st.session_state.get("chat_history"):
         if st.button("🗑 Clear conversation", key="clear_chat"):
             st.session_state.chat_history = []
+            if "chat_text" in st.session_state:
+                del st.session_state["chat_text"]
             st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    if user_input:
-        st.session_state.chat_history.append({"role": "user", "content": user_input})
-        with st.spinner("AI is thinking…"):
-            reply = _chat_response(user_input, plan, a)
+    if (send or (user_input and st.session_state.get("_prev_chat_text") != user_input)) and user_input.strip():
+        st.session_state["_prev_chat_text"] = user_input
+        st.session_state.chat_history.append({"role": "user", "content": user_input.strip()})
+        with st.spinner("🤖 Thinking…"):
+            reply = _chat_response(user_input.strip(), plan, a)
         st.session_state.chat_history.append({"role": "assistant", "content": reply})
+        # Clear the input
+        if "chat_text" in st.session_state:
+            del st.session_state["chat_text"]
         st.rerun()
 
     # ── Tips ────────────────────────────────────────────────────────────────
