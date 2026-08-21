@@ -29,7 +29,7 @@ from roadmap_data import (
 )
 from ai_suggestions import ai_available, fetch_ai_suggestions
 from ai_roadmap_builder import get_roadmap, ai_brain_available
-from pdf_export import build_pdf, AUTHOR_NAME, AUTHOR_EMAIL, AUTHOR_LINKEDIN
+from pdf_export import build_pdf, AUTHOR_NAME, AUTHOR_EMAIL
 
 # --------------------------------------------------------------------------- #
 # Platform logos (emoji-based — no external assets needed)
