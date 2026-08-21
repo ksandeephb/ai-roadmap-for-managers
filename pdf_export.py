@@ -30,7 +30,7 @@ from reportlab.platypus import (
 # ── Author ────────────────────────────────────────────────────────────────────
 AUTHOR_NAME     = "Sandeep Kumar"
 AUTHOR_EMAIL    = "ksandeep.srm@gmail.com"
-AUTHOR_LINKEDIN = "https://www.linkedin.com/in/sandeep-kumar-23b02445/"
+
 
 # ── Palette — industry-standard learning platform colours ─────────────────────
 #
