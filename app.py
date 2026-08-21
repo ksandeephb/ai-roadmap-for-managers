@@ -1031,7 +1031,6 @@ st.markdown(
     f'<div class="author-footer">'
     f"Created by <b>{AUTHOR_NAME}</b>&nbsp; ·&nbsp; "
     f'<a href="mailto:{AUTHOR_EMAIL}">{AUTHOR_EMAIL}</a>&nbsp; ·&nbsp; '
-    f'<a href="{AUTHOR_LINKEDIN}" target="_blank">LinkedIn ↗</a>'
     f"</div>",
     unsafe_allow_html=True,
 )
