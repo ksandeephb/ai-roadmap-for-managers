@@ -207,8 +207,6 @@ class _Deco:
         canvas.setStrokeColor(TEAL)
         canvas.setLineWidth(0.4)
         canvas.line(li_x, fy + 0.8*mm, li_x + li_w, fy + 0.8*mm)
-        canvas.linkURL(AUTHOR_LINKEDIN,
-            (li_x, fy - 0.5*mm, li_x + li_w, fy + 4*mm), relative=0)
 
         # Page number — right
         pg = f"Page {doc.page}"
