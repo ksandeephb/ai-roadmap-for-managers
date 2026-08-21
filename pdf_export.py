@@ -167,9 +167,6 @@ class _Deco:
             canvas.setLineWidth(0.4)
             canvas.line(ab_x + 5*mm, ab_y + ab_h - 10*mm,
                         ab_x + 5*mm + li_tw, ab_y + ab_h - 10*mm)
-            canvas.linkURL(AUTHOR_LINKEDIN,
-                (ab_x + 4*mm, ab_y + ab_h - 12*mm,
-                 ab_x + 5*mm + li_tw + 1, ab_y + ab_h - 8*mm), relative=0)
         else:
             # Slim teal bar on continuation pages
             canvas.setFillColor(TEAL)
